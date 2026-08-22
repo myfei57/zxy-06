@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"groundops/internal/flight"
 	"groundops/internal/resource"
 	"groundops/internal/roster"
 	"groundops/internal/store"
@@ -22,9 +23,14 @@ func Assign(state *store.State, taskID, owner, resourceID string, at time.Time) 
 	if !ok {
 		return errors.New("task does not exist")
 	}
-	_, ok2 := state.Flight(t.FlightID)
-	if !ok2 {
+	f, ok := state.Flight(t.FlightID)
+	if !ok {
 		return ErrUnknownFlight
+	}
+	// never dispatch personnel or vehicles to a flight that has already
+	// departed or been cancelled.
+	if !flight.IsServicable(f) {
+		return ErrFlightTerminal
 	}
 	r, ok := state.Resource(resourceID)
 	if !ok {
