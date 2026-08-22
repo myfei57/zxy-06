@@ -17,7 +17,10 @@ func EnsureTimer(state *store.State, taskID, flightID string, at time.Time) erro
 	if !ok {
 		return errTaskMissing
 	}
-	due := f.ScheduledAt.Add(time.Duration(LevelMinutes) * time.Minute)
+	// Anchor the SLA window on the flight's latest dynamic, not the original
+	// scheduled time: a delayed flight must push the escalation deadline out,
+	// otherwise the countdown runs down on a plan the flight no longer follows.
+	due := f.UpdatedAt.Add(time.Duration(LevelMinutes) * time.Minute)
 	e := &store.Escalation{
 		TaskID: t.ID,
 		Level:  0,
