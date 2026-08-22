@@ -26,15 +26,23 @@ func Complete(state *store.State, taskID string, result *store.TaskResult, at ti
 	}
 	result.TaskID = taskID
 	result.At = at
-	if t.ResourceID != "" {
-		if err := resource.Release(state, t.ResourceID); err != nil {
-			return err
-		}
-	}
+	// Persist the work result and flip the task to completed before
+	// releasing the resource. Releasing first would return the resource to
+	// the idle pool while the completion record is not yet durable; if the
+	// record write then failed, the task would still show in progress while
+	// the resource is already free for another task to grab.
 	if err := audit.RecordResult(state, result); err != nil {
 		return err
 	}
 	t.Status = store.TaskCompleted
 	t.CompletedAt = at
-	return state.PutTask(t)
+	if err := state.PutTask(t); err != nil {
+		return err
+	}
+	if t.ResourceID != "" {
+		if err := resource.Release(state, t.ResourceID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
