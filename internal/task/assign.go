@@ -47,23 +47,26 @@ func Assign(state *store.State, taskID, owner, resourceID string, at time.Time) 
 	return state.PutTask(t)
 }
 
-// ReclaimByFlight recycles every assigned or in-progress task of a flight
-// back to pending and releases its resources.
+// ReclaimByFlight cancels every still-active task of a flight and releases
+// the resources bound to it. Pending, assigned and in-progress tasks are all
+// terminated: a cancelled flight never holds vehicles, crews or open work
+// that can be revived by a later update or the recovery sweep.
 func ReclaimByFlight(state *store.State, flightID string) error {
 	for _, t := range state.TasksByFlight(flightID) {
-		if t.Status == store.TaskAssigned || t.Status == store.TaskInProgress {
-			if t.ResourceID != "" {
-				if err := resource.Release(state, t.ResourceID); err != nil {
-					return err
-				}
-			}
-			t.Status = store.TaskPending
-			t.Owner = ""
-			t.ResourceID = ""
-			t.ShiftID = ""
-			if err := state.PutTask(t); err != nil {
+		if t.Status != store.TaskPending && t.Status != store.TaskAssigned && t.Status != store.TaskInProgress {
+			continue
+		}
+		if t.ResourceID != "" {
+			if err := resource.Release(state, t.ResourceID); err != nil && err != resource.ErrAlreadyIdle {
 				return err
 			}
+		}
+		t.Status = store.TaskCancelled
+		t.Owner = ""
+		t.ResourceID = ""
+		t.ShiftID = ""
+		if err := state.PutTask(t); err != nil {
+			return err
 		}
 	}
 	return nil

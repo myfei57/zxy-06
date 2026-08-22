@@ -16,6 +16,7 @@ const (
 	TaskInProgress = "in_progress"
 	TaskCompleted  = "completed"
 	TaskFailed     = "failed"
+	TaskCancelled  = "cancelled"
 
 	ResourceIdle     = "idle"
 	ResourceOccupied = "occupied"
