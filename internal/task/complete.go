@@ -26,12 +26,16 @@ func Complete(state *store.State, taskID string, result *store.TaskResult, at ti
 	}
 	result.TaskID = taskID
 	result.At = at
+	// Persist the work result first; only once it is durably stored do we
+	// flip the task to completed and release the resource. Storing the
+	// result after the status flip is what left completed tasks with empty
+	// result columns whenever the result write failed.
+	if err := audit.RecordResult(state, result); err != nil {
+		return err
+	}
 	t.Status = store.TaskCompleted
 	t.CompletedAt = at
 	if err := state.PutTask(t); err != nil {
-		return err
-	}
-	if err := audit.RecordResult(state, result); err != nil {
 		return err
 	}
 	if t.ResourceID != "" {
