@@ -1,0 +1,13 @@
+.git
+.claude
+.verification-cache
+evidence
+private_oracles
+runner
+staging
+*.jsonl
+*.zip
+*.pem
+*.key
+gocache
+gomodcache
