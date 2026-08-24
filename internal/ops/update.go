@@ -12,8 +12,11 @@ func ApplyUpdate(state *store.State, flightID string, update store.FlightUpdate)
 	if err := flight.Update(state, flightID, update); err != nil {
 		return err
 	}
-	if update.Status == store.FlightServicing {
+	switch update.Status {
+	case store.FlightServicing:
 		return task.ActivateForFlight(state, flightID)
+	case store.FlightCancelled:
+		return task.ReclaimByFlight(state, flightID)
 	}
 	return nil
 }
